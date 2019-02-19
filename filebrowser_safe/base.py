@@ -1,11 +1,11 @@
 from __future__ import unicode_literals
 # coding: utf-8
 
+import datetime
+import mimetypes
 import os
 import time
-import datetime
 import warnings
-import mimetypes
 
 from django.core.files.storage import default_storage
 from django.db.models.fields.files import FieldFile
@@ -44,24 +44,38 @@ class FileObjectAPI(object):
         return len(self.path)
 
     # GENERAL ATTRIBUTES
+    _filetype_stored = None
 
     @cached_property
     def filetype(self):
+        if self._filetype_stored != None:
+            return self._filetype_stored
         if self.is_folder:
-            return 'Folder'
-        return get_file_type(self.filename)
+            self._filetype_stored = 'Folder'
+        else:
+            self._filetype_stored = get_file_type(self.filename)
+        return self._filetype_stored
+
+    _filesize_stored = None
 
     @cached_property
     def filesize(self):
-        if self.exists:
-            return default_storage.size(self.path)
+        if self._filesize_stored is not None:
+            return self._filesize_stored
+        if self.exists():
+            self._filesize_stored = default_storage.size(self.path)
+            return self._filesize_stored
         return None
+
+    _date_stored = None
 
     @cached_property
     def date(self):
-        if self.exists:
-            return time.mktime(
-                default_storage.get_modified_time(self.path).timetuple())
+        if self._date_stored is not None:
+            return self._date_stored
+        if self.exists():
+            self._date_stored = time.mktime(default_storage.modified_time(self.path).timetuple())
+            return self._date_stored
         return None
 
     @property
@@ -70,9 +84,13 @@ class FileObjectAPI(object):
             return datetime.datetime.fromtimestamp(self.date)
         return None
 
+    _exists_stored = None
+
     @cached_property
     def exists(self):
-        return default_storage.exists(self.path)
+        if self._exists_stored is None:
+            self._exists_stored = default_storage.exists(self.path)
+        return self._exists_stored
 
     # PATH/URL ATTRIBUTES
 
@@ -121,17 +139,33 @@ class FileObject(FileObjectAPI):
 
     where path is a relative path to a storage location.
     """
-    def __init__(self, path):
+    def __init__(self, path, **kwargs):
         self.path = path
+        is_dir = kwargs.pop("is_dir", None)
+        if is_dir:
+            self._filetype_stored = "Folder"
+            self._is_folder_stored = True
+        elif is_dir is not None:
+            self._is_folder_stored = False
+        self._filesize_stored = kwargs.pop("size", None)
+        self._exists_stored = kwargs.pop("exists", None)
+        modified_time = kwargs.pop("last_modified", None)
+        if modified_time:
+            self._date_stored = time.mktime(modified_time.timetuple())
+        self._url_stored = kwargs.pop("url", None)
         super(FileObject, self).__init__(path)
 
     @property
     def name(self):
         return self.path
 
+    _url_stored = None
+
     @property
     def url(self):
-        return default_storage.url(self.path)
+        if self._url_stored is None:
+            self._url_stored = default_storage.url(self.path)
+        return self._url_stored
 
 
 class FieldFileObject(FieldFile, FileObjectAPI):

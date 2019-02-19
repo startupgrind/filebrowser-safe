@@ -87,8 +87,14 @@ def browse(request):
 
     # QUERY / PATH CHECK
     query = request.GET.copy()
-    path = get_path(query.get('dir', ''))
-    directory = get_path('')
+    query_dir = query.get('dir', '')
+    path = get_path(query_dir)
+
+    # avoid duplicate call to get_path(), is possible
+    if query_dir:
+        directory = get_path('')
+    else:
+        directory = path
 
     if path is None:
         msg = _('The requested Folder does not exist.')
@@ -106,11 +112,13 @@ def browse(request):
     for k, v in EXTENSIONS.items():
         counter[k] = 0
 
-    dir_list, file_list = default_storage.listdir(abs_path)
+    file_records = default_storage.get_directory_entries_records(abs_path)
     files = []
-    for file in dir_list + file_list:
-
-        # EXCLUDE FILES MATCHING ANY OF THE EXCLUDE PATTERNS
+    request_filter_date = request.GET.get('filter_date', '')
+    request_filter_type = request.GET.get('filter_type', '')
+    for file_record in file_records:
+        file = file_record["name"]
+        # EXCLUDE FILES MATCHING VERSIONS_PREFIX OR ANY OF THE EXCLUDE PATTERNS
         filtered = not file or file.startswith('.')
         for re_prefix in filter_re:
             if re_prefix.search(file):
@@ -121,13 +129,20 @@ def browse(request):
 
         # CREATE FILEOBJECT
         url_path = "/".join([s.strip("/") for s in
-                            [get_directory(), path.replace("\\", "/"), file] if s.strip("/")])
-        fileobject = FileObject(url_path)
+                            [get_directory(), path, file] if s.strip("/")])
+        fileobject = FileObject(
+            url_path,
+            is_dir=file_record["is_dir"],
+            size=file_record["size"],
+            exists=file_record["exists"],
+            last_modified=file_record["last_modified"],
+            url=file_record["url"]
+        )
 
 
         # FILTER / SEARCH
         append = False
-        if fileobject.filetype == request.GET.get('filter_type', fileobject.filetype) and get_filterdate(request.GET.get('filter_date', ''), fileobject.date):
+        if (not request_filter_type or (fileobject.filetype == request.GET.get('filter_type', fileobject.filetype))) and (not request_filter_date or (request_filter_date and get_filterdate(request_filter_date, fileobject.date))):
             append = True
         if request.GET.get('q') and not re.compile(request.GET.get('q').lower(), re.M).search(file.lower()):
             append = False
@@ -139,6 +154,11 @@ def browse(request):
                 results_var['delete_total'] += 1
                 if fileobject.filetype == 'Image':
                     results_var['images_total'] += 1
+                if fileobject.filetype != 'Folder':
+                    results_var['delete_total'] += 1
+                # Ignore for now.
+                #elif fileobject.filetype == 'Folder' and fileobject.is_empty:
+                #    results_var['delete_total'] += 1
                 if query.get('type') and query.get('type') in SELECT_FORMATS and fileobject.filetype in SELECT_FORMATS[query.get('type')]:
                     results_var['select_total'] += 1
                 elif not query.get('type'):

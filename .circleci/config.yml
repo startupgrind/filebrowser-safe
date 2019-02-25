@@ -3,7 +3,7 @@ version: 2
 jobs:
     python-unit-tests:
         docker:
-            - image: startupgrind/platform_base:1.0.7
+            - image: circleci/python:2.7
               auth:
                 username: $DOCKER_USER
                 password: $DOCKER_PASSWORD

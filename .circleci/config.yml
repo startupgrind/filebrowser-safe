@@ -17,7 +17,7 @@ jobs:
                     source ~/venv/bin/activate
                     ./test.sh
             - run:
-                name: Run unit tests
+                name: Run filebrowser-safe unit tests
                 command: |
                     source ~/venv/bin/activate
                     python setup.py test

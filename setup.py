@@ -22,7 +22,7 @@ class TestCommand(test):
 
 setup(
     name="filebrowser_safe",
-    version="0.5.0",
+    version="0.5.1-sgp11834",
     description="A snapshot of the filebrowser_3 branch of django-filebrowser, "
                 "packaged as a dependency for the Mezzanine CMS for Django.",
     long_description=open("README.rst").read(),

@@ -127,8 +127,12 @@ def browse(request):
 
         # FILTER / SEARCH
         append = False
-        if fileobject.filetype == request.GET.get('filter_type', fileobject.filetype) and get_filterdate(request.GET.get('filter_date', ''), fileobject.date):
-            append = True
+        if fileobject.filetype == request.GET.get('filter_type', fileobject.filetype):
+            filter_date = request.GET.get('filter_date', '')
+            if filter_date and get_filterdate(filter_date, fileobject.date):
+                append = True
+            if not filter_date:
+                append = True
         if request.GET.get('q') and not re.compile(request.GET.get('q').lower(), re.M).search(file.lower()):
             append = False
 

@@ -129,7 +129,7 @@ class FileObject(FileObjectAPI):
     def name(self):
         return self.path
 
-    @property
+    @cached_property
     def url(self):
         return default_storage.url(self.name)
 

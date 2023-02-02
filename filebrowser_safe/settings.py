@@ -100,6 +100,8 @@ CONVERT_FILENAME = getattr(settings, "FILEBROWSER_CONVERT_FILENAME", True)
 # Loading a Sever-Directory with lots of files might take a while
 # Use this setting to limit the items shown
 LIST_PER_PAGE = getattr(settings, "FILEBROWSER_LIST_PER_PAGE", 50)
+# Fileobject list batch size
+LIST_BATCH_SIZE = getattr(settings, "FILEBROWSER_LIST_BATCH_SIZE", 500)
 # Default Sorting
 # Options: date, filesize, filename_lower, filetype_checked
 DEFAULT_SORTING_BY = getattr(settings, "FILEBROWSER_DEFAULT_SORTING_BY", "date")

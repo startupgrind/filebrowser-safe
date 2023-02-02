@@ -11,7 +11,6 @@ from django.utils.functional import cached_property
 
 from filebrowser_safe.functions import get_directory, get_file_type, path_strip
 
-
 class FileObjectAPI:
     """A mixin class providing file properties."""
 

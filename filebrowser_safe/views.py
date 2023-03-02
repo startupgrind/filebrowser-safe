@@ -187,7 +187,7 @@ def browse(request):
                 results_var["results_current"] += 1
 
     for i in range(0, file_list_size, batch_size):
-        file_list = file_list[i:i+batch_size]
+        file_list = file_list[i : i + batch_size]
         for file in file_list:
             # EXCLUDE FILES MATCHING ANY OF THE EXCLUDE PATTERNS
             filtered = not file or file.startswith(".")
@@ -196,14 +196,22 @@ def browse(request):
                     filtered = True
             if filtered:
                 continue
-            proc_file = threading.Thread(target=create_file_object, args=(file, files_to_sort,))
+            proc_file = threading.Thread(
+                target=create_file_object,
+                args=(
+                    file,
+                    files_to_sort,
+                ),
+            )
             proc_file.start()
             proc_list.append(proc_file)
         for fo in proc_list:
             fo.join()
 
     # SORTING
-    files_to_sort = sorted(files_to_sort, key=lambda f: sort_values[f.filename] or defaultValue)
+    files_to_sort = sorted(
+        files_to_sort, key=lambda f: sort_values[f.filename] or defaultValue
+    )
     if (
         not request.GET.get("ot")
         and fb_settings.DEFAULT_SORTING_ORDER == "desc"

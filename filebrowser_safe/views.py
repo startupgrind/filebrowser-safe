@@ -187,8 +187,8 @@ def browse(request):
                 results_var["results_current"] += 1
 
     for i in range(0, file_list_size, batch_size):
-        file_list = file_list[i : i + batch_size]
-        for file in file_list:
+        batch_list = file_list[i : i + batch_size]
+        for file in batch_list:
             # EXCLUDE FILES MATCHING ANY OF THE EXCLUDE PATTERNS
             filtered = not file or file.startswith(".")
             for re_prefix in filter_re:

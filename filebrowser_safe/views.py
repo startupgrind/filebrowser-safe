@@ -1,6 +1,8 @@
 import os
 import re
 from json import dumps
+import time
+import threading
 
 from django import forms
 from django.conf import settings as django_settings
@@ -85,7 +87,6 @@ def browse(request):
     """
     Browse Files/Directories.
     """
-
     # QUERY / PATH CHECK
     query = request.GET.copy()
     path = get_path(query.get("dir", ""))
@@ -117,16 +118,22 @@ def browse(request):
         counter[k] = 0
 
     dir_list, file_list = default_storage.listdir(abs_path)
-    files = []
-    for file in dir_list + file_list:
 
-        # EXCLUDE FILES MATCHING ANY OF THE EXCLUDE PATTERNS
-        filtered = not file or file.startswith(".")
-        for re_prefix in filter_re:
-            if re_prefix.search(file):
-                filtered = True
-        if filtered:
-            continue
+    # GET SORT PARAMS
+    query["o"] = request.GET.get("o", fb_settings.DEFAULT_SORTING_BY)
+    query["ot"] = request.GET.get("ot", fb_settings.DEFAULT_SORTING_ORDER)
+    defaultValue = ""
+    if query["o"] in ["date", "filesize"]:
+        defaultValue = 0.0
+    sort_values = {}
+
+    files_to_sort = []
+    proc_list = []
+    batch_size = fb_settings.LIST_BATCH_SIZE
+    file_list = dir_list + file_list
+    file_list_size = len(dir_list + file_list)
+
+    def create_file_object(file, files_to_sort):
         results_var["results_total"] += 1
 
         # CREATE FILEOBJECT
@@ -173,30 +180,47 @@ def browse(request):
                     results_var["select_total"] += 1
             except OSError:
                 # Ignore items that have problems
-                continue
+                return
             else:
-                files.append(fileobject)
+                sort_values[fileobject.filename] = getattr(fileobject, query["o"])
+                files_to_sort.append(fileobject)
                 results_var["results_current"] += 1
 
-        # COUNTER/RESULTS
-        if fileobject.filetype:
-            counter[fileobject.filetype] += 1
+    for i in range(0, file_list_size, batch_size):
+        batch_list = file_list[i : i + batch_size]
+        for file in batch_list:
+            # EXCLUDE FILES MATCHING ANY OF THE EXCLUDE PATTERNS
+            filtered = not file or file.startswith(".")
+            for re_prefix in filter_re:
+                if re_prefix.search(file):
+                    filtered = True
+            if filtered:
+                continue
+            proc_file = threading.Thread(
+                target=create_file_object,
+                args=(
+                    file,
+                    files_to_sort,
+                ),
+            )
+            proc_file.start()
+            proc_list.append(proc_file)
+        for fo in proc_list:
+            fo.join()
 
     # SORTING
-    query["o"] = request.GET.get("o", fb_settings.DEFAULT_SORTING_BY)
-    query["ot"] = request.GET.get("ot", fb_settings.DEFAULT_SORTING_ORDER)
-    defaultValue = ""
-    if query["o"] in ["date", "filesize"]:
-        defaultValue = 0.0
-    files = sorted(files, key=lambda f: getattr(f, query["o"]) or defaultValue)
+    files_to_sort = sorted(
+        files_to_sort, key=lambda f: sort_values[f.filename] or defaultValue
+    )
     if (
         not request.GET.get("ot")
         and fb_settings.DEFAULT_SORTING_ORDER == "desc"
         or request.GET.get("ot") == "desc"
     ):
-        files.reverse()
+        files_to_sort.reverse()
 
-    p = Paginator(files, fb_settings.LIST_PER_PAGE)
+    # PAGINATION
+    p = Paginator(files_to_sort, fb_settings.LIST_PER_PAGE)
     try:
         page_nr = request.GET.get("p", "1")
     except:  # noqa

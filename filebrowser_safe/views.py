@@ -44,17 +44,26 @@ except ImportError:
     escape = lambda s: s  # noqa
 
 
+# Django 5.1 removed the ``DEFAULT_FILE_STORAGE`` setting in favour of the
+# unified ``STORAGES`` dict (deprecated in 4.2). Read the default file-storage
+# backend in a way that works on both: prefer the legacy setting when it is
+# still present, otherwise fall back to ``STORAGES["default"]["BACKEND"]``.
+try:
+    default_file_storage = django_settings.DEFAULT_FILE_STORAGE
+except AttributeError:
+    default_file_storage = django_settings.STORAGES["default"]["BACKEND"]
+
 # Add some required methods to FileSystemStorage
-storage_class_name = django_settings.DEFAULT_FILE_STORAGE.split(".")[-1]
+storage_class_name = default_file_storage.split(".")[-1]
 mixin_class_name = "filebrowser_safe.storage.%sMixin" % storage_class_name
 
 # Workaround for django-s3-folder-storage
-if django_settings.DEFAULT_FILE_STORAGE == "s3_folder_storage.s3.DefaultStorage":
+if default_file_storage == "s3_folder_storage.s3.DefaultStorage":
     mixin_class_name = "filebrowser_safe.storage.S3BotoStorageMixin"
 
 try:
     mixin_class = import_string(mixin_class_name)
-    storage_class = import_string(django_settings.DEFAULT_FILE_STORAGE)
+    storage_class = import_string(default_file_storage)
 except ImportError:
     pass
 else:

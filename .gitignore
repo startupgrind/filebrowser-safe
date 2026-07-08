@@ -11,3 +11,8 @@
 /dist/
 /htmlcov/
 /junit/
+*.pyc
+*.eggs/
+*.egg-info
+.idea
+mezzanine-git/

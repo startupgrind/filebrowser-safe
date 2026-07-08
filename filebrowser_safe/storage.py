@@ -1,6 +1,7 @@
 import os
 import posixpath
 import shutil
+import posixpath
 
 from django.core.files.base import ContentFile
 from django.core.files.move import file_move_safe
@@ -118,6 +119,12 @@ class S3BotoStorageMixin(StorageMixin):
         directories, files = self.listdir(self._encode_name(name))
 
         for key in files:
+            self.delete('/'.join([name, key]))
+
+        for dirname in directories:
+            self.rmtree('/'.join([name, dirname]))
+
+        for key in files:
             self.delete("/".join([name, key]))
 
         for dirname in directories:
@@ -189,16 +196,16 @@ def clean_name(name):
     Cleans the name so that Windows style paths work
     """
     # Normalize Windows style paths
-    clean_name = posixpath.normpath(name).replace("\\", "/")
+    clean_name = posixpath.normpath(name).replace('\\', '/')
 
     # os.path.normpath() can strip trailing slashes so we implement
     # a workaround here.
-    if name.endswith("/") and not clean_name.endswith("/"):
+    if name.endswith('/') and not clean_name.endswith('/'):
         # Add a trailing slash as it was stripped.
-        clean_name = clean_name + "/"
+        clean_name = clean_name + '/'
 
     # Given an empty string, os.path.normpath() will return ., which we don't want
-    if clean_name == ".":
-        clean_name = ""
+    if clean_name == '.':
+        clean_name = ''
 
     return clean_name

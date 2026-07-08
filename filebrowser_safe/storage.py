@@ -1,17 +1,15 @@
-from __future__ import unicode_literals
-# coding: utf-8
-
-# PYTHON IMPORTS
 import os
+import posixpath
 import shutil
 import posixpath
 
-# DJANGO IMPORTS
-from django.core.files.move import file_move_safe
 from django.core.files.base import ContentFile
+from django.core.files.move import file_move_safe
+
+FILE_EXISTS_MSG = "The destination file '{}' exists and allow_overwrite is False"
 
 
-class StorageMixin(object):
+class StorageMixin:
     """
     Adds some useful methods to the Storage class.
     """
@@ -32,7 +30,7 @@ class StorageMixin(object):
         """
         Moves safely a file from one location to another.
 
-        If allow_ovewrite==False and new_file_name exists, raises an exception.
+        If allow_overwrite==False and new_file_name exists, raises an exception.
         """
         raise NotImplementedError()
 
@@ -50,7 +48,6 @@ class StorageMixin(object):
 
 
 class FileSystemStorageMixin(StorageMixin):
-
     def isdir(self, name):
         return os.path.isdir(self.path(name))
 
@@ -58,7 +55,9 @@ class FileSystemStorageMixin(StorageMixin):
         return os.path.isfile(self.path(name))
 
     def move(self, old_file_name, new_file_name, allow_overwrite=False):
-        file_move_safe(self.path(old_file_name), self.path(new_file_name), allow_overwrite=True)
+        file_move_safe(
+            self.path(old_file_name), self.path(new_file_name), allow_overwrite=True
+        )
 
     def makedirs(self, name):
         os.makedirs(self.path(name))
@@ -68,7 +67,6 @@ class FileSystemStorageMixin(StorageMixin):
 
 
 class S3BotoStorageMixin(StorageMixin):
-
     def isfile(self, name):
         return self.exists(name) and self.size(name) > 0
 
@@ -91,20 +89,25 @@ class S3BotoStorageMixin(StorageMixin):
         return False
 
     def move(self, old_file_name, new_file_name, allow_overwrite=False):
-
         if self.exists(new_file_name):
             if allow_overwrite:
                 self.delete(new_file_name)
             else:
-                raise "The destination file '%s' exists and allow_overwrite is False" % new_file_name
+                raise FILE_EXISTS_MSG.format(new_file_name)
 
-        old_key_name = self._encode_name(self._normalize_name(self._clean_name(old_file_name)))
-        new_key_name = self._encode_name(self._normalize_name(self._clean_name(new_file_name)))
+        old_key_name = self._encode_name(
+            self._normalize_name(self._clean_name(old_file_name))
+        )
+        new_key_name = self._encode_name(
+            self._normalize_name(self._clean_name(new_file_name))
+        )
 
-        k = self.bucket.copy_key(new_key_name, self.bucket.name, old_key_name, preserve_acl=True)
+        k = self.bucket.copy_key(
+            new_key_name, self.bucket.name, old_key_name, preserve_acl=True
+        )
 
         if not k:
-            raise "Couldn't copy '%s' to '%s'" % (old_file_name, new_file_name)
+            raise f"Couldn't copy '{old_file_name}' to '{new_file_name}'"
 
         self.delete(old_file_name)
 
@@ -121,9 +124,14 @@ class S3BotoStorageMixin(StorageMixin):
         for dirname in directories:
             self.rmtree('/'.join([name, dirname]))
 
+        for key in files:
+            self.delete("/".join([name, key]))
+
+        for dirname in directories:
+            self.rmtree("/".join([name, dirname]))
+
 
 class GoogleStorageMixin(StorageMixin):
-
     def isfile(self, name):
         return self.exists(name)
 
@@ -151,15 +159,19 @@ class GoogleStorageMixin(StorageMixin):
             if allow_overwrite:
                 self.delete(new_file_name)
             else:
-                raise "The destination file '%s' exists and allow_overwrite is False" % new_file_name
+                raise FILE_EXISTS_MSG.format(new_file_name)
 
-        old_key_name = self._encode_name(self._normalize_name(self._clean_name(old_file_name)))
-        new_key_name = self._encode_name(self._normalize_name(self._clean_name(new_file_name)))
+        old_key_name = self._encode_name(
+            self._normalize_name(self._clean_name(old_file_name))
+        )
+        new_key_name = self._encode_name(
+            self._normalize_name(self._clean_name(new_file_name))
+        )
 
         k = self.bucket.copy_key(new_key_name, self.bucket.name, old_key_name)
 
         if not k:
-            raise "Couldn't copy '%s' to '%s'" % (old_file_name, new_file_name)
+            raise f"Couldn't copy '{old_file_name}' to '{new_file_name}'"
 
         self.delete(old_file_name)
 

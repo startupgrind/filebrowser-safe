@@ -1,6 +1,16 @@
+*.egg-info
+*.eggs/
+*.pyc
 .DS_Store
-.svn
+.coverage
+.idea
+.pytest_cache
 .tox
+.vscode
+/build/
+/dist/
+/htmlcov/
+/junit/
 *.pyc
 *.eggs/
 *.egg-info

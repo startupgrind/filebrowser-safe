@@ -1,7 +1,7 @@
 {% extends "admin/base_site.html" %}
 
 <!-- LOADING -->
-{% load i18n l10n static fb_tags mezzanine_tags %}
+{% load i18n l10n static fb_tags %}
 
 <!-- STYLESHEETS -->
 {% block stylesheets %}
@@ -16,11 +16,10 @@
 {% endblock %}
 
 <!-- JAVASCRIPTS -->
-{% block javascripts %}
+{% block extrahead %}
     {{ block.super }}
-    <script type="text/javascript" src="../../jsi18n/"></script>
     <script type="text/javascript" src="{{ settings_var.URL_FILEBROWSER_MEDIA }}js/upload.js"></script>
-{% endblock %}
+{% endblock extrahead %}
 
 <!-- COLTYPE/BODYCLASS -->
 {% block coltype %}colM{% endblock %}

@@ -1,28 +1,20 @@
-from __future__ import unicode_literals
-# coding: utf-8
-
+import datetime
+import mimetypes
 import os
 import time
-import datetime
 import warnings
-import mimetypes
 
 from django.core.files.storage import default_storage
 from django.db.models.fields.files import FieldFile
 from django.utils.encoding import smart_str
 from django.utils.functional import cached_property
 
-try:
-    from django.utils.encoding import smart_text
-except ImportError:
-    # Backward compatibility for Py2 and Django < 1.5
-    from django.utils.encoding import smart_unicode as smart_text
-
-from filebrowser_safe.functions import get_file_type, path_strip, get_directory
+from filebrowser_safe.functions import get_directory, get_file_type, path_strip
 
 
-class FileObjectAPI(object):
-    """ A mixin class providing file properties. """
+class FileObjectAPI:
+    """A mixin class providing file properties."""
+
     def __init__(self, path):
         self.head = os.path.dirname(path)
         self.filename = os.path.basename(path)
@@ -31,37 +23,35 @@ class FileObjectAPI(object):
         self.mimetype = mimetypes.guess_type(self.filename)
 
     def __str__(self):
-        return smart_str(self.path)
+        return smart_str(self.name)
 
     def __unicode__(self):
-        return smart_text(self.path)
+        return smart_str(self.name)
 
     def __repr__(self):
-        return smart_str("<%s: %s>" % (
-            self.__class__.__name__, self or "None"))
+        return smart_str("<{}: {}>".format(self.__class__.__name__, self or "None"))
 
     def __len__(self):
-        return len(self.path)
+        return len(self.name)
 
     # GENERAL ATTRIBUTES
 
     @cached_property
     def filetype(self):
         if self.is_folder:
-            return 'Folder'
+            return "Folder"
         return get_file_type(self.filename)
 
     @cached_property
     def filesize(self):
         if self.exists:
-            return default_storage.size(self.path)
+            return default_storage.size(self.name)
         return None
 
     @cached_property
     def date(self):
         if self.exists:
-            return time.mktime(
-                default_storage.get_modified_time(self.path).timetuple())
+            return time.mktime(default_storage.get_modified_time(self.path).timetuple())
         return None
 
     @property
@@ -72,25 +62,24 @@ class FileObjectAPI(object):
 
     @cached_property
     def exists(self):
-        return default_storage.exists(self.path)
+        return default_storage.exists(self.name)
 
     # PATH/URL ATTRIBUTES
 
     @property
     def path_relative_directory(self):
-        """ path relative to the path returned by get_directory() """
-        return path_strip(self.path, get_directory()).lstrip("/")
+        """path relative to the path returned by get_directory()"""
+        return path_strip(self.name, get_directory()).lstrip("/")
 
     # FOLDER ATTRIBUTES
 
     @property
     def directory(self):
-        return path_strip(self.path, get_directory())
+        return path_strip(self.name, get_directory())
 
     @property
     def folder(self):
-        return os.path.dirname(
-            path_strip(os.path.join(self.head, ''), get_directory()))
+        return os.path.dirname(path_strip(os.path.join(self.head, ""), get_directory()))
 
     @cached_property
     def is_folder(self):
@@ -100,9 +89,10 @@ class FileObjectAPI(object):
     def is_empty(self):
         if self.is_folder:
             try:
-                dirs, files = default_storage.listdir(self.path)
+                dirs, files = default_storage.listdir(self.name)
             except UnicodeDecodeError:
                 from mezzanine.core.exceptions import FileSystemEncodingChanged
+
                 raise FileSystemEncodingChanged()
             if not dirs and not files:
                 return True
@@ -121,9 +111,10 @@ class FileObject(FileObjectAPI):
 
     where path is a relative path to a storage location.
     """
+
     def __init__(self, path):
         self.path = path
-        super(FileObject, self).__init__(path)
+        super().__init__(path)
 
     @property
     def name(self):
@@ -131,7 +122,7 @@ class FileObject(FileObjectAPI):
 
     @property
     def url(self):
-        return default_storage.url(self.path)
+        return default_storage.url(self.name)
 
 
 class FieldFileObject(FieldFile, FileObjectAPI):
@@ -142,20 +133,24 @@ class FieldFileObject(FieldFile, FileObjectAPI):
     django's built-in FileField.
     - Implements the FileObject API for historical reasons.
     """
+
     def __init__(self, instance, field, path):
         FieldFile.__init__(self, instance, field, path)
-        FileObjectAPI.__init__(self, path or '')
+        FileObjectAPI.__init__(self, path or "")
 
     def delete(self, **kwargs):
         if self.is_folder:
-            default_storage.rmtree(self.path)
+            default_storage.rmtree(self.name)
         else:
-            super(FieldFileObject, self).delete(**kwargs)
+            super().delete(**kwargs)
 
     @property
     def path(self):
         warnings.warn(
             "In future versions of filebrowser-safe, the `path` property will "
             "be absolute. To continue getting the same behavior please use "
-            "the `name` property instead.", FutureWarning, stacklevel=2)
+            "the `name` property instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         return self.name
